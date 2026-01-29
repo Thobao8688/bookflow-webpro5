@@ -6,15 +6,18 @@ const canvas = document.getElementById("pdfCanvas");
 const ctx = canvas.getContext("2d");
 const textLayer = document.getElementById("textLayer");
 
+const voiceSelect = document.getElementById("voice");
+const rateSlider = document.getElementById("rate");
+
 document.getElementById("pdfInput").addEventListener("change", loadPDF);
 document.getElementById("next").onclick = () => renderPage(pageNum + 1);
 document.getElementById("prev").onclick = () => renderPage(pageNum - 1);
-document.getElementById("speak").onclick = speakText;
+document.getElementById("speak").onclick = speakSelectedOrPage;
 
-const rateSlider = document.getElementById("rate");
 rateSlider.oninput = () =>
   document.getElementById("rateVal").innerText = rateSlider.value + "x";
 
+// ================= PDF =================
 async function loadPDF(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -30,15 +33,12 @@ async function renderPage(num) {
   pageNum = num;
 
   const page = await pdfDoc.getPage(num);
-  const viewport = page.getViewport({ scale: 1.3 });
+  const viewport = page.getViewport({ scale: 1.4 });
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;
 
-  await page.render({
-    canvasContext: ctx,
-    viewport
-  }).promise;
+  await page.render({ canvasContext: ctx, viewport }).promise;
 
   const textContent = await page.getTextContent();
   pageText = textContent.items.map(i => i.str).join(" ");
@@ -58,29 +58,54 @@ async function renderPage(num) {
     `${pageNum} / ${pdfDoc.numPages}`;
 }
 
-// ===== TTS =====
+// ================= TTS =================
 let voices = [];
-speechSynthesis.onvoiceschanged = () => {
-  voices = speechSynthesis.getVoices();
-  const select = document.getElementById("voice");
-  select.innerHTML = "";
-  voices.forEach(v => {
-    const opt = document.createElement("option");
-    opt.text = v.name;
-    opt.value = v.name;
-    select.appendChild(opt);
-  });
-};
 
-function speakText() {
-  if (!pageText) return;
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+
+  // 👉 LỌC RIÊNG TIẾNG VIỆT
+  const viVoices = voices.filter(v =>
+    v.lang.toLowerCase().includes("vi")
+  );
+
+  voiceSelect.innerHTML = "";
+
+  viVoices.forEach(v => {
+    const opt = document.createElement("option");
+    opt.value = v.name;
+    opt.text = `🇻🇳 ${v.name}`;
+    voiceSelect.appendChild(opt);
+  });
+
+  // fallback nếu máy không có tiếng Việt
+  if (viVoices.length === 0) {
+    const opt = document.createElement("option");
+    opt.text = "⚠️ Chưa cài giọng tiếng Việt";
+    voiceSelect.appendChild(opt);
+  }
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+// ================= ĐỌC PHẦN ĐƯỢC QUÉT =================
+function speakSelectedOrPage() {
+  let text = window.getSelection().toString().trim();
+
+  if (!text) {
+    text = pageText; // nếu không quét → đọc cả trang
+  }
+
+  if (!text) return;
 
   speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(pageText);
+
+  const utter = new SpeechSynthesisUtterance(text);
   utter.rate = parseFloat(rateSlider.value);
 
-  const selected = document.getElementById("voice").value;
-  utter.voice = voices.find(v => v.name === selected);
+  const selectedVoice = voices.find(v => v.name === voiceSelect.value);
+  if (selectedVoice) utter.voice = selectedVoice;
 
   speechSynthesis.speak(utter);
 }
