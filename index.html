@@ -2,43 +2,34 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>📘 BookFlow</title>
-
-  <!-- PDF.JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  </script>
-
   <link rel="stylesheet" href="style.css" />
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
+  <header>📘 BookFlow</header>
 
-<header>
-  📘 BookFlow
-</header>
+  <input type="file" id="pdfInput" accept="application/pdf" />
 
-<div class="toolbar">
-  <input type="file" id="pdfInput" accept="application/pdf">
-  <button id="prev">⬅</button>
-  <span id="pageInfo">0 / 0</span>
-  <button id="next">➡</button>
-</div>
+  <div class="controls">
+    <button onclick="prevPage()">⏮️</button>
+    <button onclick="toggleSpeak()">▶️ / ⏸️</button>
+    <button onclick="nextPage()">⏭️</button>
+    <button onclick="zoomOut()">➖</button>
+    <button onclick="zoomIn()">➕</button>
+    <button onclick="fontDown()">A−</button>
+    <button onclick="fontUp()">A+</button>
+  </div>
 
-<div id="viewer">
-  <canvas id="pdfCanvas"></canvas>
-  <div id="textLayer"></div>
-</div>
+  <div id="viewer">
+    <div id="pageContainer">
+      <canvas id="pdfCanvas"></canvas>
+      <div id="textLayer" class="textLayer"></div>
+    </div>
+  </div>
 
-<div class="controls">
-  <select id="voice"></select>
-  <input type="range" id="rate" min="0.5" max="2" step="0.25" value="1">
-  <span id="rateVal">1x</span>
-  <button id="speak">🔊 Đọc</button>
-</div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

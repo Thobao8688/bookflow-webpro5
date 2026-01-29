@@ -1,51 +1,55 @@
 body {
   margin: 0;
-  background: #0f0f0f;
-  color: white;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #111;
+  color: #eee;
+  font-family: system-ui, sans-serif;
 }
 
 header {
   text-align: center;
-  padding: 12px;
-  font-size: 18px;
-  background: #000;
+  padding: 10px;
+  font-size: 20px;
 }
 
-.toolbar, .controls {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
+.controls {
+  text-align: center;
+  margin: 8px;
+}
+
+.controls button {
+  margin: 4px;
+  padding: 6px 10px;
+  font-size: 16px;
 }
 
 #viewer {
-  position: relative;
   display: flex;
   justify-content: center;
+  overflow: auto;
+}
+
+#pageContainer {
+  position: relative;
 }
 
 canvas {
-  background: white;
+  background: #fff;
 }
 
-#textLayer {
+.textLayer {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.textLayer span {
+  position: absolute;
+  white-space: pre;
   color: transparent;
+  cursor: text;
 }
 
-button {
-  background: #1db954;
-  border: none;
+.textLayer span.highlight {
+  background: yellow;
   color: black;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
-
-input, select {
-  background: #222;
-  color: white;
-  border: 1px solid #333;
 }

@@ -1,86 +1,135 @@
-let pdfDoc = null;
-let pageNum = 1;
-let pageText = "";
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 const canvas = document.getElementById("pdfCanvas");
 const ctx = canvas.getContext("2d");
-const textLayer = document.getElementById("textLayer");
+const textLayerDiv = document.getElementById("textLayer");
 
-document.getElementById("pdfInput").addEventListener("change", loadPDF);
-document.getElementById("next").onclick = () => renderPage(pageNum + 1);
-document.getElementById("prev").onclick = () => renderPage(pageNum - 1);
-document.getElementById("speak").onclick = speakText;
+let pdfDoc = null;
+let pageNum = 1;
+let scale = 1.3;
+let fontScale = 1;
+let utterance = null;
+let spans = [];
 
-const rateSlider = document.getElementById("rate");
-rateSlider.oninput = () =>
-  document.getElementById("rateVal").innerText = rateSlider.value + "x";
-
-async function loadPDF(e) {
+document.getElementById("pdfInput").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const buffer = await file.arrayBuffer();
-  pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const url = URL.createObjectURL(file);
+  pdfDoc = await pdfjsLib.getDocument(url).promise;
   pageNum = 1;
-  renderPage(pageNum);
-}
+  renderPage();
+});
 
-async function renderPage(num) {
-  if (!pdfDoc || num < 1 || num > pdfDoc.numPages) return;
-  pageNum = num;
-
-  const page = await pdfDoc.getPage(num);
-  const viewport = page.getViewport({ scale: 1.3 });
+async function renderPage() {
+  const page = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;
 
-  await page.render({
-    canvasContext: ctx,
-    viewport
-  }).promise;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  textLayerDiv.innerHTML = "";
+  spans = [];
 
   const textContent = await page.getTextContent();
-  pageText = textContent.items.map(i => i.str).join(" ");
-
-  textLayer.innerHTML = "";
-  textLayer.style.width = canvas.width + "px";
-  textLayer.style.height = canvas.height + "px";
 
   pdfjsLib.renderTextLayer({
     textContent,
-    container: textLayer,
+    container: textLayerDiv,
     viewport,
     textDivs: []
+  }).promise.then(() => {
+    spans = [...textLayerDiv.querySelectorAll("span")];
+    applyFontScale();
   });
-
-  document.getElementById("pageInfo").innerText =
-    `${pageNum} / ${pdfDoc.numPages}`;
 }
 
-// ===== TTS =====
-let voices = [];
-speechSynthesis.onvoiceschanged = () => {
-  voices = speechSynthesis.getVoices();
-  const select = document.getElementById("voice");
-  select.innerHTML = "";
-  voices.forEach(v => {
-    const opt = document.createElement("option");
-    opt.text = v.name;
-    opt.value = v.name;
-    select.appendChild(opt);
+/* ===== Trang ===== */
+function prevPage() {
+  if (pageNum > 1) {
+    pageNum--;
+    renderPage();
+  }
+}
+
+function nextPage() {
+  if (pageNum < pdfDoc.numPages) {
+    pageNum++;
+    renderPage();
+  }
+}
+
+/* ===== Zoom ===== */
+function zoomIn() {
+  scale += 0.1;
+  renderPage();
+}
+
+function zoomOut() {
+  scale = Math.max(0.6, scale - 0.1);
+  renderPage();
+}
+
+/* ===== Font ===== */
+function fontUp() {
+  fontScale += 0.1;
+  applyFontScale();
+}
+
+function fontDown() {
+  fontScale = Math.max(0.7, fontScale - 0.1);
+  applyFontScale();
+}
+
+function applyFontScale() {
+  spans.forEach(s => {
+    s.style.transform = `scale(${fontScale})`;
+    s.style.transformOrigin = "left top";
   });
-};
+}
 
-function speakText() {
-  if (!pageText) return;
+/* ===== ĐỌC + KARAOKE ===== */
+function toggleSpeak() {
+  if (speechSynthesis.speaking) {
+    speechSynthesis.cancel();
+    clearHighlight();
+    return;
+  }
 
-  speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(pageText);
-  utter.rate = parseFloat(rateSlider.value);
+  const text = spans.map(s => s.textContent).join(" ");
+  if (!text) return;
 
-  const selected = document.getElementById("voice").value;
-  utter.voice = voices.find(v => v.name === selected);
+  utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "vi-VN";
 
-  speechSynthesis.speak(utter);
+  utterance.onboundary = e => {
+    if (e.name !== "word") return;
+    highlightByCharIndex(e.charIndex);
+  };
+
+  utterance.onend = clearHighlight;
+
+  speechSynthesis.speak(utterance);
+}
+
+function highlightByCharIndex(index) {
+  let count = 0;
+  clearHighlight();
+
+  for (const span of spans) {
+    const len = span.textContent.length;
+    if (count + len >= index) {
+      span.classList.add("highlight");
+      span.scrollIntoView({ block: "center", behavior: "smooth" });
+      break;
+    }
+    count += len;
+  }
+}
+
+function clearHighlight() {
+  spans.forEach(s => s.classList.remove("highlight"));
 }
